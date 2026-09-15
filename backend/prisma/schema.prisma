@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// User & Authentication
+// ------------------------------------------------------
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String // bcrypt hashed
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  savedRepos          SavedRepository[]
+  repositoryAnalyses  RepositoryAnalysis[]
+  prAnalyses          PRAnalysis[]
+  mergePredictions    MergePrediction[]
+  testRecommendations TestRecommendation[]
+  aiGuideHistories    AIGuideHistory[]
+  ciAnalyses          CIFailureAnalysis[]
+  contributorFits     ContributorFit[]
+}
+
+// ------------------------------------------------------
+// Saved Repositories
+// ------------------------------------------------------
+model SavedRepository {
+  id            String   @id @default(uuid())
+  owner         String
+  name          String
+  fullName      String
+  url           String
+  defaultBranch String   @default("main")
+  addedAt       DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fullName])
+  @@index([fullName])
+}
+
+// ------------------------------------------------------
+// RIE Analysis History
+// (Actual large RIO json is kept in Redis. This is metadata/history)
+// ------------------------------------------------------
+model RepositoryAnalysis {
+  id             String @id @default(uuid())
+  repoFullName   String
+  commitSha      String
+  status         String // "PENDING", "SUCCESS", "FAILED"
+  scannerVersion String
+  durationMs     Int?
+
+  // A lightweight summary can go here, full RIO in redis
+  summary Json?
+
+  analyzedAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([repoFullName])
+}
+
+// ------------------------------------------------------
+// PR Readiness Analysis
+// ------------------------------------------------------
+model PRAnalysis {
+  id           String @id @default(uuid())
+  repoFullName String
+  prNumber     Int
+  title        String
+  baseBranch   String
+  headBranch   String
+  commitSha    String
+  score        Int // Readiness score (0-100)
+  status       String // "READY", "NEEDS_WORK", "REJECTED"
+
+  findings Json // Detailed PR analysis findings
+
+  analyzedAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([repoFullName, prNumber])
+}
+
+// ------------------------------------------------------
+// Merge Conflict Prediction
+// ------------------------------------------------------
+model MergePrediction {
+  id            String @id @default(uuid())
+  repoFullName  String
+  prNumber      Int
+  baseBranch    String
+  headBranch    String
+  conflictScore Int // 0-100 risk score
+  prediction    String // "SAFE", "WARNING", "HIGH_RISK"
+
+  details Json // Conflicting files, AST changes, etc.
+
+  analyzedAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ------------------------------------------------------
+// Smart Test Recommendation
+// ------------------------------------------------------
+model TestRecommendation {
+  id           String @id @default(uuid())
+  repoFullName String
+  commitSha    String
+
+  affectedFiles  Json // Array of changed files
+  recommendation Json // Recommended tests with reasoning
+
+  analyzedAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ------------------------------------------------------
+// AI Repository Guide (Chat History)
+// ------------------------------------------------------
+model AIGuideHistory {
+  id           String @id @default(uuid())
+  repoFullName String
+  commitSha    String
+  question     String
+  answer       String @db.Text
+  model        String @default("gemini-2.5-flash")
+
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ------------------------------------------------------
+// CI Failure Analysis
+// ------------------------------------------------------
+model CIFailureAnalysis {
+  id           String @id @default(uuid())
+  repoFullName String
+  workflowId   String
+  commitSha    String
+
+  failureLog String @db.Text
+  analysis   Json // AI root cause analysis
+
+  analyzedAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ------------------------------------------------------
+// Contributor Fit Analysis
+// ------------------------------------------------------
+model ContributorFit {
+  id           String @id @default(uuid())
+  repoFullName String
+  fitScore     Int // 0-100 match
+
+  matchedSkills Json // Languages and frameworks matched
+  analysis      Json // Deep reasoning
+
+  analyzedAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
