@@ -16,6 +16,14 @@ export const rulesExtractor = {
       commitRules: [],
       pullRequestRules: [],
       reviewRules: [],
+      commitConvention: null,
+      branchConvention: null,
+      pullRequestTemplate: {
+        present: false,
+        sourceFile: null,
+        requiredSections: [],
+        requiredChecklistItems: [],
+      },
     };
 
     for (const file of contributionFiles) {
@@ -48,6 +56,15 @@ export const rulesExtractor = {
       if (/contributing/i.test(file.path)) {
         result.declaredRules.push(...extractListItems(content));
       }
+
+      if (/pull_request_template/i.test(file.path)) {
+        result.pullRequestTemplate = {
+          present: true,
+          sourceFile: file.path,
+          requiredSections: extractRequiredSections(content),
+          requiredChecklistItems: extractRequiredChecklistItems(content),
+        };
+      }
     }
 
     // Deduplicate
@@ -56,10 +73,53 @@ export const rulesExtractor = {
     result.pullRequestRules = deduplicate(result.pullRequestRules).slice(0, 5);
     result.reviewRules = deduplicate(result.reviewRules).slice(0, 5);
     result.declaredRules = deduplicate(result.declaredRules).slice(0, 10);
+    result.commitConvention = extractCommitConvention(result.commitRules);
+    result.branchConvention = extractBranchConvention(result.branchRules);
 
     return result;
   },
 };
+
+function extractCommitConvention(commitRules) {
+  const conventionalCommitRule = commitRules.find((rule) =>
+    /conventional commits?/i.test(rule)
+  );
+
+  if (!conventionalCommitRule) return null;
+
+  return {
+    type: 'conventional_commits',
+    sourceRule: conventionalCommitRule,
+  };
+}
+
+function extractBranchConvention(branchRules) {
+  const prefixes = [...new Set(
+    branchRules.flatMap((rule) =>
+      rule.match(/\b(?:feature|fix|hotfix|chore|docs|bugfix)\//gi) || []
+    ).map((prefix) => prefix.toLowerCase())
+  )];
+
+  return prefixes.length
+    ? { prefixes }
+    : null;
+}
+
+function extractRequiredSections(content) {
+  return content.split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^#{1,6}\s+/.test(line))
+    .map((line) => line.replace(/^#{1,6}\s+/, '').trim())
+    .filter(Boolean);
+}
+
+function extractRequiredChecklistItems(content) {
+  return content.split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^[-*]\s+\[[ xX]\]\s+/.test(line))
+    .map((line) => line.replace(/^[-*]\s+\[[ xX]\]\s+/, '').trim())
+    .filter(Boolean);
+}
 
 function extractRuleLines(content, keywords) {
   const lines = content.split('\n');

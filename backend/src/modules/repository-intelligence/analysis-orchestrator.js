@@ -10,14 +10,14 @@ import { CONSTANTS } from '../../config/constants.config.js';
 /**
  * Orchestrates the full analysis pipeline.
  */
-export async function analyzeRepository(repositoryUrl) {
+export async function analyzeRepository(repositoryUrl, requestedCommitSha = null) {
   return withTimeout(
-    executePipeline(repositoryUrl),
+    executePipeline(repositoryUrl, requestedCommitSha),
     CONSTANTS.ANALYSIS_TIMEOUT_MS
   );
 }
 
-async function executePipeline(repositoryUrl) {
+async function executePipeline(repositoryUrl, requestedCommitSha) {
   // Step 1: Validate & Fetch Metadata
   const { parsed, metadata } = await validateRepository(repositoryUrl);
   const { owner, repository } = parsed;
@@ -25,7 +25,11 @@ async function executePipeline(repositoryUrl) {
   logger.info(`[Orchestrator] Starting analysis pipeline for ${owner}/${repository}`);
 
   // Step 2: Get Latest Commit SHA
-  const commitSha = await githubClient.getLatestCommitSha(owner, repository, metadata.defaultBranch);
+  const commitSha = requestedCommitSha || await githubClient.getLatestCommitSha(
+    owner,
+    repository,
+    metadata.defaultBranch
+  );
 
   // Step 3: Fetch Repository Tree
   const treeItems = await githubClient.getRepositoryTree(owner, repository, commitSha);

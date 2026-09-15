@@ -63,4 +63,29 @@ export class AppError extends Error {
       422
     );
   }
+
+  static pullRequestNotFound(owner, repo, number) {
+    return new AppError(
+      ErrorCodes.PULL_REQUEST_NOT_FOUND,
+      `Pull request ${owner}/${repo}#${number} was not found or is not accessible.`,
+      404
+    );
+  }
+
+  static readinessValidationFailed(details = null) {
+    return new AppError(
+      ErrorCodes.READINESS_VALIDATION_FAILED,
+      'Generated pull request readiness result failed validation.',
+      500,
+      details
+    );
+  }
+
+  static rioUnavailable() {
+    return new AppError(
+      ErrorCodes.RIO_UNAVAILABLE,
+      'Repository intelligence is unavailable for the pull request base commit.',
+      422
+    );
+  }
 }

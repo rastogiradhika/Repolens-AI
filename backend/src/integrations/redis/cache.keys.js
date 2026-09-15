@@ -4,7 +4,7 @@
  * Example: facebook/react@abc123
  */
 export function buildRioCacheKey(owner, repository, commitSha) {
-  return `${owner}/${repository}@${commitSha}`;
+  return `rio:v1:${owner}/${repository}@${commitSha}`;
 }
 
 /**
@@ -13,4 +13,11 @@ export function buildRioCacheKey(owner, repository, commitSha) {
  */
 export function buildMetaCacheKey(owner, repository) {
   return `meta:${owner}/${repository}`;
+}
+
+/**
+ * Builds a readiness cache key for one exact PR version and repository snapshot.
+ */
+export function buildPrReadinessCacheKey(owner, repository, pullRequestNumber, headSha, baseSha) {
+  return `pr-readiness:v1:${owner}/${repository}:pr-${pullRequestNumber}:head-${headSha}:base-${baseSha}`;
 }
