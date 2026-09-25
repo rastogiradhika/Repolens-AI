@@ -1,0 +1,8 @@
+{
+  "name": "RepoLens AI",
+  "description": "Repository Intelligence Engine - AI-powered repository onboarding, merge risk analysis, and PR readiness platform.",
+  "prompt": "RepoLens AI",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
